@@ -1664,7 +1664,7 @@ final class RepoAIInsightService {
         let external: String = {
             guard settings.externalContextEnabled else { return "off" }
             let privacy = settings.externalSearchAllowPrivateRepos ? "private" : "public"
-            let aggregate = settings.aggregateExternalContextSearchEnabled && settings.isProUser ? "aggregate" : "single"
+            let aggregate = settings.aggregateExternalContextSearchEnabled ? "aggregate" : "single"
             return "\(aggregate)-\(settings.externalContextProviderSelection.rawValue)-\(settings.externalSearchDefaultProvider.rawValue)-\(privacy)"
         }()
         return "lang:\(outputLanguage)|summary:\(summaryTask.providerID)/\(summaryModel)|tags:\(tagsTask.providerID)/\(tagsModel)|external:\(external)"

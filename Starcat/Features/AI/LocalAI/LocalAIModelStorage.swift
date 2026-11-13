@@ -7,8 +7,10 @@
 //  关键约束：
 //  - 模型是「机器级资源」，不进 per-user 数据库：数据库按 users/<userId>/ 隔离，
 //    而模型应该跨账号共享。安装状态单一真源 = 每个模型目录里的 manifest.json。
-//  - 当前路径统一落在 Local AI App Group。App Store / Direct 只共享模型资源，
-//    用户数据库、偏好和缓存仍按渠道隔离。
+//  - 正式团队签名能打开 Local AI App Group 时，模型仍放在该共享容器。
+//    ad-hoc 自用签名拿不到这个容器，改为
+//    ~/Library/Application Support/<bundle id>/LocalAI/v1/models。
+//    App Store / Direct 只共享模型资源；用户数据库、偏好和缓存仍按渠道隔离。
 //  - 旧路径仍可解析，但只供一次性迁移读取，禁止新下载继续写入旧目录。
 //  - 目录名 = `<entry.id>@<revision>`：revision 进目录名让版本可追溯；同时保证
 //    Qwen3 reranker 的目录名包含 "rerank"，满足 `RerankerModelFactory` 的
@@ -70,22 +72,55 @@ enum LocalAIModelStorage {
 
     // MARK: - 路径解析
 
-    /// App Group 内的版本化共享模型目录。
+    /// 版本化模型目录。
     ///
     /// `v1` 是磁盘协议版本，不是 App 版本。未来若目录语义变化，应新增版本迁移，
     /// 不能原地改变已安装用户的共享目录解释方式。
+    ///
+    /// 正式团队构建的 `containerURL` 非空，继续用 App Group，让 App Store / Direct
+    /// 共用同一份模型。自用 ad-hoc 没有该 entitlement，`containerURL` 为 nil，
+    /// 此时写到当前用户的 Application Support。两种布局的最后两级都是 `v1/models`，
+    /// 锁目录仍是 models 的同级 `locks`。
     static func modelsRootURL(fileManager: FileManager = .default) throws -> URL {
         if TestEnvironment.isRunning, let testRootOverride {
             return testRootOverride
         }
-        guard let container = fileManager.containerURL(
-            forSecurityApplicationGroupIdentifier: AppConstants.localAIAppGroupIdentifier
-        ) else {
+        let container = fileManager.containerURL(
+            forSecurityApplicationGroupIdentifier: AppConstants.localAIAppGroupIdentifier)
+        // 有 App Group 时不读取 Application Support。把容器自己传进未使用的参数，
+        // 只为满足纯函数签名，避免为了共享布局再解析一次用户目录。
+        if let container {
+            return modelsRootURL(
+                containerURL: container,
+                applicationSupportDirectory: container)
+        }
+        guard let applicationSupport = fileManager.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask
+        ).first else {
             throw StorageError.applicationSupportUnavailable
         }
-        return container
-            .appendingPathComponent("Library/Application Support", isDirectory: true)
-            .appendingPathComponent("Starcat", isDirectory: true)
+        return modelsRootURL(
+            containerURL: nil,
+            applicationSupportDirectory: applicationSupport)
+    }
+
+    /// 纯路径选择，便于单测覆盖「有容器」和「无容器」而不碰真实 App Group。
+    ///
+    /// `applicationSupportDirectory` 只在 `containerURL == nil` 时读取。
+    static func modelsRootURL(
+        containerURL: URL?,
+        applicationSupportDirectory: URL
+    ) -> URL {
+        if let containerURL {
+            return containerURL
+                .appendingPathComponent("Library/Application Support", isDirectory: true)
+                .appendingPathComponent("Starcat", isDirectory: true)
+                .appendingPathComponent("LocalAI", isDirectory: true)
+                .appendingPathComponent("v1", isDirectory: true)
+                .appendingPathComponent("models", isDirectory: true)
+        }
+        return applicationSupportDirectory
+            .appendingPathComponent(AppConstants.bundleIdentifier, isDirectory: true)
             .appendingPathComponent("LocalAI", isDirectory: true)
             .appendingPathComponent("v1", isDirectory: true)
             .appendingPathComponent("models", isDirectory: true)

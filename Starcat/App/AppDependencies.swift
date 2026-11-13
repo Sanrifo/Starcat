@@ -635,7 +635,7 @@ final class AppDependencies {
             webSearchProvider: RAGExternalWebSearchProvider(
                 settingsSnapshot: externalSearchSnapshot,
                 selection: settings.externalContextProviderSelection,
-                aggregateEnabled: settings.aggregateExternalContextSearchEnabled && settings.isProUser
+                aggregateEnabled: settings.aggregateExternalContextSearchEnabled
             ),
             repositoryInsightsProvider: repositoryInsightsContextCoordinator,
             repoContextProvider: repoAIContextProvider,

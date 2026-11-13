@@ -338,7 +338,7 @@ final class AppSettingsAgentExternalSearchCollector: AgentExternalSearchCollecti
             let sourceItems = externalContext?.sourceItems ?? []
             let log = [
                 "provider_selection=\(settings.externalContextProviderSelection.rawValue)",
-                "aggregate=\(settings.aggregateExternalContextSearchEnabled && settings.isProUser)",
+                "aggregate=\(settings.aggregateExternalContextSearchEnabled)",
                 "cache=managed_by_ExternalSearchContextProvider",
                 "sources=\(sourceItems.count)"
             ].joined(separator: "\n")

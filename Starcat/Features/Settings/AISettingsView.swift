@@ -107,8 +107,6 @@ struct AISettingsTab: View {
     private static let embeddingSettingsAnchor = "settings.ai.sharedEmbedding"
     private static let externalSearchSettingsAnchor = "settings.ai.externalSearch"
 
-    /// 免费用户点击 AI 设置页升级入口时展示统一 Pro 付费墙。
-    @State private var paywallContext: ProPaywallContext?
     /// CC Switch 导入预览。确认前不写 Keychain。
     @State private var ccSwitchImportSession: CCSwitchImportSession?
     @State private var ccSwitchImportError: String?
@@ -117,24 +115,8 @@ struct AISettingsTab: View {
         self.page = page
     }
 
-    /// 模型与自动化继续遵守既有 Pro / Apple Silicon Local AI 门控；
-    /// 免费的联网搜索和仓库上下文不使用此配置权限。
-    private var hasAIConfigurationAccess: Bool {
-        dependencies.entitlementGate.isProUser || LocalAIHardwareSupport.isLocalAIAvailable
-    }
-
-    @ViewBuilder
     var body: some View {
-        // AI 服务是 Direct / StoreKit 共享的 Pro 能力，必须读取聚合后的业务门控；
-        // 直接读取 SubscriptionManager 会把 Direct License 用户误判为未开通。
-        // 本地 AI 免费（dong4j 2026-09-12）：Apple Silicon 上免费用户也必须能进入
-        // 本页配置并下载本地模型；远程 provider 的消费仍由 EntitlementGate 在调用点拦截，
-        // 设置页只是配置面。知识库索引配置对免费用户同样开放。
-        if page == .externalSearch || hasAIConfigurationAccess {
-            aiConfigurationForm
-        } else {
-            lockedAISettings
-        }
+        aiConfigurationForm
     }
 
     private var aiConfigurationForm: some View {
@@ -296,53 +278,6 @@ struct AISettingsTab: View {
         } message: { profile in
             Text(String(format: String.l10n("settings.ai.provider.deleteConfirm.messageFormat"), profile.displayName))
         }
-        }
-    }
-
-    private var lockedAISettings: some View {
-        Form {
-            Section {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(alignment: .center, spacing: 14) {
-                        ProCrownIcon(size: 44)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("settings.ai.locked.title")
-                                .font(.title3.weight(.semibold))
-                            Text("settings.ai.locked.subtitle")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-
-                    Divider()
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("settings.ai.locked.benefit.byok", systemImage: "key.fill")
-                        Label("settings.ai.locked.benefit.workflow", systemImage: "sparkles")
-                        Label("settings.ai.locked.benefit.billing", systemImage: "creditcard")
-                    }
-                    .font(.callout)
-
-                    Button {
-                        paywallContext = ProPaywallContext(
-                            feature: .aiSummary,
-                            message: String.l10n("settings.ai.locked.paywallMessage")
-                        )
-                    } label: {
-                        Text("settings.ai.locked.upgrade")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
-                }
-                .padding(.vertical, 4)
-            } footer: {
-                Text("settings.ai.locked.footer")
-            }
-        }
-        .formStyle(.grouped)
-        .sheet(item: $paywallContext) { context in
-            ProPaywallSheet.hosted(context: context, dependencies: dependencies)
         }
     }
 

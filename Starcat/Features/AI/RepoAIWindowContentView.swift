@@ -2264,7 +2264,7 @@ struct RepoAIWindowContentView: View {
             return String.l10n("ai.assistant.chat.contextStatus.external")
         }
         let providers = Set(sources.map(\.provider))
-        if settings.aggregateExternalContextSearchEnabled && settings.isProUser {
+        if settings.aggregateExternalContextSearchEnabled {
             return String(format: String.l10n("ai.assistant.chat.contextStatus.externalAggregateFormat"), providers.count, ExternalSearchProviderID.allCases.count)
         }
         if providers.count == 1, let provider = providers.first {

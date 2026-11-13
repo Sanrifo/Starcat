@@ -317,31 +317,17 @@ struct SmartCollectionRuleEditorSheet: View {
 
                     // 仓库健康度
                     FormSection(titleKey: "smartCollections.editor.section.repoHealth") {
-                        if dependencies.entitlementGate.isProUser {
-                            optionalIntRow(titleKey: "smartCollections.editor.healthMin", value: $draft.healthScoreMin, range: 0...100)
-                            optionalIntRow(titleKey: "smartCollections.editor.healthMax", value: $draft.healthScoreMax, range: 0...100)
-                            SmartCollectionGradePicker(selectedGrades: $draft.healthGrades)
-                        } else {
-                            Text("smartCollections.editor.health.proLocked")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(12)
-                        }
+                        optionalIntRow(titleKey: "smartCollections.editor.healthMin", value: $draft.healthScoreMin, range: 0...100)
+                        optionalIntRow(titleKey: "smartCollections.editor.healthMax", value: $draft.healthScoreMax, range: 0...100)
+                        SmartCollectionGradePicker(selectedGrades: $draft.healthGrades)
                     }
 
                     // 质量
                     FormSection(titleKey: "smartCollections.editor.section.quality") {
-                        if dependencies.entitlementGate.isProUser {
-                            optionalIntRow(titleKey: "smartCollections.editor.maintenanceMin", value: $draft.maintenanceScoreMin, range: 0...100)
-                            optionalIntRow(titleKey: "smartCollections.editor.popularityHealthMin", value: $draft.popularityScoreMin, range: 0...100)
-                            optionalIntRow(titleKey: "smartCollections.editor.qualityMin", value: $draft.qualityScoreMin, range: 0...100)
-                            optionalIntRow(titleKey: "smartCollections.editor.securityMin", value: $draft.securityScoreMin, range: 0...100)
-                        } else {
-                            Text("smartCollections.editor.qualityDimensions.proLocked")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(12)
-                        }
+                        optionalIntRow(titleKey: "smartCollections.editor.maintenanceMin", value: $draft.maintenanceScoreMin, range: 0...100)
+                        optionalIntRow(titleKey: "smartCollections.editor.popularityHealthMin", value: $draft.popularityScoreMin, range: 0...100)
+                        optionalIntRow(titleKey: "smartCollections.editor.qualityMin", value: $draft.qualityScoreMin, range: 0...100)
+                        optionalIntRow(titleKey: "smartCollections.editor.securityMin", value: $draft.securityScoreMin, range: 0...100)
                         optionalIntRow(titleKey: "smartCollections.editor.openSSFMin", value: $draft.openSSFScoreMin, range: 0...10)
                     }
 

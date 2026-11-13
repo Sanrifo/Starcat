@@ -120,39 +120,31 @@ final class EntitlementGate {
         self.userIDProvider = userIDProvider
     }
 
+    /// 付费墙已取消（2026-11-12）。订阅状态仍由 provider 持有，但不再决定能否使用功能。
     var isProUser: Bool {
-        entitlementProvider.entitlement.isActive
+        _ = entitlementProvider
+        return true
     }
 
-    /// Pro-only 功能校验。
+    /// 功能校验。付费墙取消后一律放行，保留方法签名以免调用点散落判断。
     func requirePro(_ feature: ProFeature) throws {
-        guard !isProUser else { return }
-        throw EntitlementGateError.requiresPro(feature: feature)
+        _ = feature
     }
 
-    /// Pro-only 功能校验（本地 AI 免费，dong4j 2026-09-12 拍板）。
-    ///
-    /// `usesLocalOnly == true` 表示该功能的全部模型依赖都解析到 `.localAI`
-    /// （进程内 MLX 推理，无远程 AI 成本），此时跳过 Pro 校验；远程 provider 行为
-    /// 完全不变。判定由调用方用 `AppSettings.isTaskResolvedToLocalAI(_:)` 组合，
-    /// 门控本身不反查设置层，保持解耦。
+    /// 功能校验。`usesLocalOnly` 仍由调用方传入，门控不再据此拦截。
     func requirePro(_ feature: ProFeature, usesLocalOnly: Bool) throws {
-        guard !isProUser, !usesLocalOnly else { return }
-        throw EntitlementGateError.requiresPro(feature: feature)
+        _ = (feature, usesLocalOnly)
     }
 
     func validateTagCreation(currentTagCount: Int) throws {
-        guard !isProUser, currentTagCount >= Self.freeTagLimit else { return }
-        throw EntitlementGateError.tagLimitReached(limit: Self.freeTagLimit)
+        _ = currentTagCount
     }
 
     func validateReleaseSubscription(activeSubscriptionCount: Int, isAlreadySubscribed: Bool) throws {
-        guard !isProUser, !isAlreadySubscribed, activeSubscriptionCount >= Self.freeReleaseSubscriptionLimit else { return }
-        throw EntitlementGateError.releaseSubscriptionLimitReached(limit: Self.freeReleaseSubscriptionLimit)
+        _ = (activeSubscriptionCount, isAlreadySubscribed)
     }
 
     func validateSmartCollectionCreation(currentCount: Int) throws {
-        guard !isProUser, currentCount >= Self.freeSmartCollectionLimit else { return }
-        throw EntitlementGateError.smartCollectionLimitReached(limit: Self.freeSmartCollectionLimit)
+        _ = currentCount
     }
 }

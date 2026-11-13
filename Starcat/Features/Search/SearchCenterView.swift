@@ -297,14 +297,6 @@ struct SearchCenterView: View {
     }
 
     private func refreshSemanticIndex() {
-        guard dependencies.entitlementGate.isProUser else {
-            viewModel.paywallContext = ProPaywallContext(
-                feature: .semanticSearch,
-                message: String.l10n("search.paywall.semantic.upgrade")
-            )
-            return
-        }
-
         Task {
             await homeViewModel.refreshSemanticIndex()
             // 刷新完成后重跑当前已提交查询；成功时立即纳入新向量，失败时则让

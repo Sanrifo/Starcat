@@ -2,9 +2,8 @@
 //  LocalAIGatingTests.swift
 //  StarcatTests
 //
-//  本地 AI 免费门控与 selection 语义：
-//  - 任务解析到 `.localAI` 时 `requirePro(_:usesLocalOnly:)` 放行；
-//  - 远程 provider 的门控行为不变；
+//  本地 AI 与远程能力的放行语义：
+//  - 付费墙取消后，本地和远程任务都不再因订阅被拦截；
 //  - 内置 profile 的「已验证 = 有已安装模型」语义能被 selection 解析消费。
 //
 
@@ -71,12 +70,10 @@ struct LocalAIGatingTests {
         try gate.requirePro(.semanticSearch, usesLocalOnly: true)
     }
 
-    @Test("远程 provider 门控行为不变")
-    func remoteStillRequiresPro() {
+    @Test("远程 provider 不再被付费墙拦截")
+    func remoteNoLongerRequiresPro() throws {
         let gate = makeGate(isPro: false)
-        #expect(throws: EntitlementGateError.self) {
-            try gate.requirePro(.aiChat, usesLocalOnly: false)
-        }
+        try gate.requirePro(.aiChat, usesLocalOnly: false)
     }
 
     @Test("Pro 用户不受 usesLocalOnly 影响")
@@ -94,14 +91,21 @@ struct LocalAIGatingTests {
             models: [descriptor(name: LocalAIModelCatalog.llm.displayName, capability: .chat)],
             verified: true)
         var settings = AppSettings.shared
+        let originalChat = settings.aiChatTask
+        let originalSummary = settings.aiSummaryTask
         try withProfiles([local]) {
-            var task = settings.aiChatTask
+            defer {
+                settings.aiChatTask = originalChat
+                settings.aiSummaryTask = originalSummary
+            }
+            // 本机摘要可能已经指向本地模型；先改成远程，才能断言「只改对话任务」。
+            var summary = originalSummary
+            summary.providerID = "test-remote-provider"
+            settings.aiSummaryTask = summary
+
+            var task = originalChat
             task.providerID = LocalAIModelCatalog.builtInProfileID
             settings.aiChatTask = task
-            defer {
-                task.providerID = originalChatProviderID
-                settings.aiChatTask = task
-            }
             #expect(settings.isTaskResolvedToLocalAI(settings.aiChatTask))
             #expect(settings.isChatTaskResolvedToLocalAI)
             #expect(!settings.isSummaryTaskResolvedToLocalAI)
@@ -144,10 +148,6 @@ struct LocalAIGatingTests {
     }
 
     // MARK: - helpers
-
-    private var originalChatProviderID: String {
-        AppSettings.shared.aiChatTask.providerID
-    }
 
     private func taskConfig(providerID: String, model: String) -> AIModelTaskConfiguration {
         // AIModelTaskConfiguration 没有无参 init；以当前对话任务为底版改字段。

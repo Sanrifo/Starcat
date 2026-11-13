@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      开源自用 Debug 使用 ad-hoc 签名（CODE_SIGN_IDENTITY=-），没有正式团队描述文件。
+      associated-domains 与 application-groups 都是受限制 entitlement，ad-hoc 带上会被系统拒绝启动。
+      因此这里故意留空：
+      - 不声明 applinks:starcat.ink，自用构建没有 Universal Link。
+      - 不声明 8WCUMGCWMB.com.starcat.app.localai。本地模型改落到
+        ~/Library/Application Support/com.starcat.app/LocalAI/v1/models。
+      - 不声明桌面小组件 App Group，自用构建不注册 Widget。
+      Direct 本身非沙箱，网络与 Keychain 不依赖本文件里的沙箱键。
+      正式团队构建继续使用 StarcatDirect.entitlements，不要把那份文件换到这里。
+    -->
+</dict>
+</plist>

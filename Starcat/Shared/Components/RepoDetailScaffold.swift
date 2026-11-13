@@ -254,9 +254,6 @@ struct RepoDetailScaffold<Body: View, HeroExt: View>: View {
     /// 避免相邻列各自弹提示导致反馈位置与操作对象不一致。
     @State private var detailToastMessage: String?
 
-    /// Pro 付费墙展示上下文。Wiki / 推荐入口在已登录但非 Pro 时弹出付费墙。
-    @State private var proPaywallContext: ProPaywallContext?
-
     /// Issues VM 懒创建（幂等）：`.task` 挂载预创建 + 点击兜底共用。
     /// 跨工作台开关保活；切换仓库由 `prepare(owner:repo:)` 复位。
     private func ensureRepoIssuesVMIfNeeded() {
@@ -492,9 +489,6 @@ struct RepoDetailScaffold<Body: View, HeroExt: View>: View {
                   request.repoID == repo.id else { return }
             detailToastMessage = request.messageKey
         }
-        .sheet(item: $proPaywallContext) { context in
-            ProPaywallSheet.hosted(context: context, dependencies: dependencies)
-        }
         .sheet(isPresented: $isShowingUnstarDataChoice) {
             RepositoryUnstarDataChoiceSheet(
                 repositoryFullName: repo.fullName,
@@ -536,7 +530,6 @@ struct RepoDetailScaffold<Body: View, HeroExt: View>: View {
             isLibraryOperationInFlight = false
             isShowingUnstarDataChoice = false
             detailToastMessage = nil
-            proPaywallContext = nil
         }
         .onChange(of: metadataPanelHeight) { _, newHeight in
             restoreExpandedHeroIfNeeded(naturalPanelHeight: newHeight)
@@ -866,25 +859,7 @@ struct RepoDetailScaffold<Body: View, HeroExt: View>: View {
             }
             if !wikiLinks.isEmpty {
                 if dependencies.authSession.state.isAuthenticated {
-                    // 已登录：Pro 门控
-                    if dependencies.entitlementGate.isProUser {
-                        RepoWikiMenu(links: wikiLinks)
-                    } else {
-                        // 非 Pro：点击 Wiki 图标弹出付费墙
-                        Button {
-                            proPaywallContext = ProPaywallContext(feature: .externalWiki)
-                        } label: {
-                            WikiEntryIcon(size: 13)
-                                .frame(width: 28, height: 28)
-                                .heroActionIconSurface(colorScheme: colorScheme)
-                        }
-                        .buttonStyle(.plain)
-                        .focusEffectDisabled()
-                        .pressableHover()
-                        .help(Text("wiki.menu.help"))
-                        .accessibilityLabel(Text("wiki.menu.title"))
-                        .fixedSize()
-                    }
+                    RepoWikiMenu(links: wikiLinks)
                 } else {
                     // 未登录：点击 Wiki 图标弹出登录 sheet
                     Button {
@@ -909,10 +884,6 @@ struct RepoDetailScaffold<Body: View, HeroExt: View>: View {
                 RepoRecommendButton {
                     guard dependencies.authSession.state.isAuthenticated else {
                         dependencies.authSession.requestLoginSheet()
-                        return
-                    }
-                    guard dependencies.entitlementGate.isProUser else {
-                        proPaywallContext = ProPaywallContext(feature: .repoRecommendations)
                         return
                     }
                     showsRecommendations = true

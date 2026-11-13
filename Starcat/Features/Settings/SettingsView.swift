@@ -108,7 +108,6 @@ struct SettingsView: View {
         case notifications
         /// 2026-09-13 从通用页拆出：键盘交互（AI 发送键 + 应用命令键位）独立成页。
         case shortcuts
-        case pro
         /// 2026-09-06 新增：权限类配置（OAuth scope、数据贡献）独立成页。
         case privacy
         /// AI 的依赖配置优先于自动化与索引：供应商 / 本地模型 / 任务模型集中在本页。
@@ -144,7 +143,6 @@ struct SettingsView: View {
             case .general:      return "settings.general.title"
             case .notifications: return "settings.notifications.title"
             case .shortcuts:    return "settings.general.shortcuts"
-            case .pro:          return "settings.navigation.item.proLicense"
             case .privacy:      return "settings.navigation.item.privacyPermissions"
             case .aiModels:     return "settings.models.title"
             case .translation:  return "settings.navigation.item.translation"
@@ -172,7 +170,6 @@ struct SettingsView: View {
             case .general:      return .general
             case .notifications: return .notifications
             case .shortcuts:    return .shortcuts
-            case .pro:          return .pro
             case .privacy:      return .privacy
             case .aiModels:     return .models
             case .translation:  return .translation
@@ -341,9 +338,7 @@ struct SettingsView: View {
                 settingsSidebarRow(.shortcuts)
             }
 
-            // 账户相关入口独立归类，继续复用原 tab 身份，保留搜索、深链和历史导航。
             Section("settings.sidebar.group.account") {
-                settingsSidebarRow(.pro)
                 settingsSidebarRow(.privacy)
             }
 
@@ -441,8 +436,6 @@ struct SettingsView: View {
             notificationsTab
         case .shortcuts:
             shortcutsTab
-        case .pro:
-            ProSettingsTab()
         case .privacy:
             privacyTab
         case .aiModels:
@@ -494,8 +487,6 @@ struct SettingsView: View {
                                keywords: ["快捷键", "keyboard", "shortcut", "键位"]),
             SettingsSearchItem("general.accessibility", titleKey: "settings.general.accessibility", tab: .general,
                                keywords: ["动画", "无障碍", "accessibility", "motion"]),
-            SettingsSearchItem("pro", titleKey: "settings.navigation.item.proLicense", tab: .pro,
-                               keywords: ["订阅", "授权", "激活", "license", "subscription", "purchase"]),
             SettingsSearchItem("privacy", titleKey: "settings.navigation.item.privacyPermissions", tab: .privacy,
                                keywords: ["隐私", "权限", "OAuth", "数据贡献", "推荐", "privacy"]),
             SettingsSearchItem("privacy.oauthScopes", titleKey: "settings.privacy.github.title", tab: .privacy,
@@ -593,8 +584,6 @@ struct SettingsView: View {
             return SettingsLocation(tab: .notifications)
         case "shortcuts":
             return SettingsLocation(tab: .shortcuts)
-        case "pro":
-            return SettingsLocation(tab: .pro)
         case "privacy", "privacy.oauthScopes", "privacy.dataContribution", "privacy.telemetry",
              "privacy.ai", "diagnostics.telemetry", "diagnostics.privacy":
             return SettingsLocation(tab: .privacy)

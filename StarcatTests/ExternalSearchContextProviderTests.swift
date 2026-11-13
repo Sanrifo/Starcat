@@ -79,8 +79,8 @@ struct ExternalSearchContextProviderTests {
         #expect(recorder.queries.allSatisfy { !$0.contains("secret description") })
     }
 
-    @Test("非 Pro 即使开启 aggregate 偏好也不发起聚合")
-    func aggregatePreferenceDoesNotRunForNonPro() async throws {
+    @Test("订阅镜像为免费时，开启 aggregate 仍会聚合已启用的搜索源")
+    func aggregateRunsWithoutProMirror() async throws {
         let settings = makeSettings()
         for provider in ExternalSearchProviderID.allCases {
             enable(provider, settings: settings)
@@ -96,7 +96,7 @@ struct ExternalSearchContextProviderTests {
 
         _ = try await contextProvider.collect(for: makeRepo())
 
-        #expect(Set(recorder.providerIDs) == Set([.exa]))
+        #expect(Set(recorder.providerIDs) == Set(ExternalSearchProviderID.automaticContextPriority))
     }
 
     @Test("Pro 聚合允许部分 Provider 失败并保留成功结果")

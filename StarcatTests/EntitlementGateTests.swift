@@ -13,76 +13,16 @@ import Testing
 @Suite("EntitlementGate")
 struct EntitlementGateTests {
 
-    @Test("AI 摘要免费用户直接需要 Pro")
-    func aiSummaryRequiresPro() throws {
-        let gate = makeGate(
-            isPro: false,
-            userID: 42
-        )
+    @Test("付费墙取消后，未订阅用户也可以使用全部能力")
+    func featuresStayOpenWithoutSubscription() throws {
+        let gate = makeGate(isPro: false, userID: 42)
 
-        do {
-            try gate.requirePro(.aiSummary)
-            Issue.record("免费用户生成 AI 摘要应被 Pro 门控拦截")
-        } catch let error as EntitlementGateError {
-            #expect(error == .requiresPro(feature: .aiSummary))
-        }
-    }
-
-    @Test("Pro 用户可使用 AI 标签推荐")
-    func proCanUseAITags() throws {
-        let gate = makeGate(
-            isPro: true,
-            userID: 7
-        )
-
-        try gate.requirePro(.aiTags)
-    }
-
-    @Test("免费用户最多创建 20 个标签")
-    func freeTagLimit() throws {
-        let freeGate = makeGate(isPro: false)
-        try freeGate.validateTagCreation(currentTagCount: 19)
-
-        do {
-            try freeGate.validateTagCreation(currentTagCount: 20)
-            Issue.record("第 21 个标签应被门控拦截")
-        } catch let error as EntitlementGateError {
-            #expect(error == .tagLimitReached(limit: 20))
-        }
-
-        let proGate = makeGate(isPro: true)
-        try proGate.validateTagCreation(currentTagCount: 200)
-    }
-
-    @Test("免费用户最多订阅 5 个 Release")
-    func freeReleaseSubscriptionLimit() throws {
-        let gate = makeGate(isPro: false)
-        try gate.validateReleaseSubscription(activeSubscriptionCount: 4, isAlreadySubscribed: false)
-        try gate.validateReleaseSubscription(activeSubscriptionCount: 5, isAlreadySubscribed: true)
-
-        do {
-            try gate.validateReleaseSubscription(activeSubscriptionCount: 5, isAlreadySubscribed: false)
-            Issue.record("第 6 个 Release 订阅应被门控拦截")
-        } catch let error as EntitlementGateError {
-            #expect(error == .releaseSubscriptionLimitReached(limit: 5))
-        }
-    }
-
-    @Test("免费用户最多创建 4 个自定义智能集合")
-    func freeSmartCollectionLimit() throws {
-        let freeGate = makeGate(isPro: false)
-        try freeGate.validateSmartCollectionCreation(currentCount: 3)
-
-        do {
-            try freeGate.validateSmartCollectionCreation(currentCount: 4)
-            Issue.record("第 5 个自定义智能集合应被门控拦截")
-        } catch let error as EntitlementGateError {
-            #expect(error == .smartCollectionLimitReached(limit: 4))
-            #expect(error.feature == .smartCollections)
-        }
-
-        let proGate = makeGate(isPro: true)
-        try proGate.validateSmartCollectionCreation(currentCount: 40)
+        #expect(gate.isProUser)
+        try gate.requirePro(.aiSummary)
+        try gate.requirePro(.aiTags, usesLocalOnly: false)
+        try gate.validateTagCreation(currentTagCount: 200)
+        try gate.validateReleaseSubscription(activeSubscriptionCount: 50, isAlreadySubscribed: false)
+        try gate.validateSmartCollectionCreation(currentCount: 40)
     }
 
     private func makeGate(

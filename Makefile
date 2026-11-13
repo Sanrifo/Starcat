@@ -41,7 +41,7 @@ APPSTORE_ARCHIVE := $(CURDIR)/dist/appstore/Starcat-AppStore.xcarchive
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build-appstore build-direct run-appstore run-direct test test-build-scripts reset-db reset-anysearch-cache reset-chat-cache reset-all show-data clean start-supports build-dmg release-store release-dry-run package-appstore open-appstore-archive package-direct-debug package-direct-debug-signed package-direct package-direct-notarized release-direct release-direct-development release-direct-retry release-direct-unnotarized pr-helper bump-version linguist sync-fly-secrets setup-production-api-keys deploy-pages deploy-pages-test
+.PHONY: help build-appstore build-direct build-self run-appstore run-direct run-self test test-build-scripts reset-db reset-anysearch-cache reset-chat-cache reset-all show-data clean start-supports build-dmg release-store release-dry-run package-appstore open-appstore-archive package-direct-debug package-direct-debug-signed package-direct package-direct-notarized release-direct release-direct-development release-direct-retry release-direct-unnotarized pr-helper bump-version linguist sync-fly-secrets setup-production-api-keys deploy-pages deploy-pages-test
 
 help: ## 列出所有可用命令
 	@echo "Starcat 常用命令："
@@ -50,6 +50,8 @@ help: ## 列出所有可用命令
 	@echo "  make build-direct           构建并校验 Direct / 非 App Store Debug，不启动"
 	@echo "  make run-appstore           执行 scripts/run-debug-appstore.sh（App Store / 沙盒 Debug）"
 	@echo "  make run-direct             执行 scripts/run-debug-direct.sh（Direct / 非 App Store Debug）"
+	@echo "  make build-self             构建并校验本机自用 ad-hoc Debug，不启动"
+	@echo "  make run-self               执行 scripts/run-debug-self.sh（无正式团队证书的自用 Debug）"
 	@echo "  make test                   使用稳定版 Xcode 和 build/DerivedData-Tests 跑全量单测"
 	@echo "  make test TEST_ARGS=\"...\"   向 xcodebuild 追加参数，例如 -only-testing:StarcatTests/Foo"
 	@echo "  make test-build-scripts     验证 Debug 构建缓存的工具链隔离逻辑"
@@ -99,6 +101,12 @@ run-appstore: ## App Store / 沙盒 Debug
 
 run-direct: ## Direct / 非 App Store Debug
 	@bash scripts/run-debug-direct.sh
+
+build-self: ## 构建并校验本机自用 ad-hoc Debug，不启动
+	@bash scripts/run-debug-self.sh --build-only
+
+run-self: ## 本机自用 ad-hoc Debug（不需要正式团队证书）
+	@bash scripts/run-debug-self.sh
 
 test-build-scripts: ## 验证 Debug 构建缓存的工具链隔离逻辑
 	@bash scripts/tests/test-debug-build-environment.sh

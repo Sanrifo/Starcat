@@ -77,6 +77,25 @@ struct LocalAIModelStorageTests {
         return (directory, manifest)
     }
 
+    @Test("有 App Group 容器时模型目录留在共享容器")
+    func modelsRootUsesAppGroupContainer() {
+        let container = URL(fileURLWithPath: "/GroupContainer", isDirectory: true)
+        let support = URL(fileURLWithPath: "/ApplicationSupport", isDirectory: true)
+        let root = LocalAIModelStorage.modelsRootURL(
+            containerURL: container,
+            applicationSupportDirectory: support)
+        #expect(root.path == "/GroupContainer/Library/Application Support/Starcat/LocalAI/v1/models")
+    }
+
+    @Test("没有 App Group 容器时模型目录落到 Application Support")
+    func modelsRootFallsBackToApplicationSupport() {
+        let support = URL(fileURLWithPath: "/ApplicationSupport", isDirectory: true)
+        let root = LocalAIModelStorage.modelsRootURL(
+            containerURL: nil,
+            applicationSupportDirectory: support)
+        #expect(root.path == "/ApplicationSupport/com.starcat.app/LocalAI/v1/models")
+    }
+
     @Test("manifest 写后可读且字段一致")
     func manifestRoundtrip() throws {
         let root = tempRoot

@@ -73,5 +73,14 @@ starcat_prepare_debug_derived_data \
   $'format=1\nowner=cli-tests\nxcode=Xcode-A'
 assert_file_contains "$TEST_STAMP_PATH" "owner=cli-tests"
 
+SELF_DERIVED_DATA="$PROJECT_ROOT/build/DerivedData-Self"
+SELF_STAMP_PATH="$SELF_DERIVED_DATA/.starcat-build-environment"
+starcat_prepare_debug_derived_data \
+  "$PROJECT_ROOT" \
+  "$SELF_DERIVED_DATA" \
+  "self-debug" \
+  $'format=1\nowner=self-debug\nxcode=Xcode-A'
+assert_file_contains "$SELF_STAMP_PATH" "owner=self-debug"
+
 echo "PASS: Debug 构建环境缓存边界测试通过"
 

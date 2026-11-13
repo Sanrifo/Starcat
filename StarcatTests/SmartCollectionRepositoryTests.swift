@@ -64,8 +64,8 @@ struct SmartCollectionRepositoryTests {
         #expect(try await repo.count() == 1)
     }
 
-    @Test("免费用户通过门控 repository 只能创建 4 个自定义智能集合")
-    func gatedRepositoryBlocksFifthFreeCollection() async throws {
+    @Test("付费墙取消后，门控 repository 不再限制自定义智能集合数量")
+    func gatedRepositoryAllowsCollectionsBeyondFormerFreeLimit() async throws {
         let base = try makeRepo()
         let gate = EntitlementGate(
             entitlementProvider: SmartCollectionTestEntitlementProvider(isPro: false),
@@ -73,18 +73,12 @@ struct SmartCollectionRepositoryTests {
         )
         let gated = GatedSmartCollectionRepository(base: base, entitlementGate: gate)
 
-        for index in 0..<EntitlementGate.freeSmartCollectionLimit {
+        let total = EntitlementGate.freeSmartCollectionLimit + 1
+        for index in 0..<total {
             try await gated.create(try makeCollection(id: "free-\(index)", name: "Free \(index)", sortOrder: index))
         }
 
-        do {
-            try await gated.create(try makeCollection(id: "free-5", name: "Free 5", sortOrder: 5))
-            Issue.record("免费用户第 5 个自定义智能集合应被门控拦截")
-        } catch let error as EntitlementGateError {
-            #expect(error == .smartCollectionLimitReached(limit: EntitlementGate.freeSmartCollectionLimit))
-        }
-
-        #expect(try await base.count() == EntitlementGate.freeSmartCollectionLimit)
+        #expect(try await base.count() == total)
     }
 
     @Test("删除全部自定义集合后，免费用户可再次创建")

@@ -134,7 +134,7 @@ struct ExternalSearchSettingsSection: View {
         }
     }
 
-    /// 折叠只影响展示；Pro 门控和私有仓库开关的依赖关系沿用现有绑定。
+    /// 折叠只影响展示；私有仓库开关仍依赖外部上下文总开关。
     private var externalContextAdvancedControls: some View {
         @Bindable var settings = settings
         return VStack(alignment: .leading, spacing: 12) {
@@ -142,10 +142,8 @@ struct ExternalSearchSettingsSection: View {
             centeredToggle(
                 "settings.externalSearch.aggregate",
                 description: "settings.externalSearch.copy.aggregateDescription",
-                isOn: aggregateExternalContextBinding,
-                showsPro: !settings.isProUser
+                isOn: aggregateExternalContextBinding
             )
-            .disabled(!settings.isProUser)
 
             Divider()
             centeredToggle(
@@ -168,19 +166,11 @@ struct ExternalSearchSettingsSection: View {
     private func centeredToggle(
         _ title: LocalizedStringKey,
         description: LocalizedStringKey,
-        isOn: Binding<Bool>,
-        showsPro: Bool = false
+        isOn: Binding<Bool>
     ) -> some View {
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(title)
-                    if showsPro {
-                        Text(verbatim: "Pro")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                Text(title)
                 Text(description)
                     .font(.caption)
                     .foregroundStyle(.secondary)

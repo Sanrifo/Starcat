@@ -641,6 +641,9 @@ extension LocalMLXRuntime {
         case .stop: finishReason = "stop"
         case .length: finishReason = "length"
         case .cancelled: throw CancellationError()
+        // 新版 MLX 在 grammar / logit processor 主动结束时返回 steered。
+        // 文本已经生成完，按正常完成返回，不把它当成取消或失败。
+        case .steered: finishReason = "steered"
         }
         let usage = AIChatUsage(
             inputTokens: completion.promptTokenCount,

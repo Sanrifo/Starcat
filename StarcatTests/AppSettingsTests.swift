@@ -1623,7 +1623,7 @@ struct AppSettingsTests {
         #expect(settings.configuredEmbeddingModelName == nil)
     }
 
-    @Test("AI: 工作台入口先校验 Pro，再校验对话模型")
+    @Test("AI: 工作台入口只校验对话模型")
     func workspaceEntryAccessOrder() {
         #expect(AIWorkspaceKind.agent.proFeature == .aiChat)
         #expect(AIWorkspaceKind.agent.chatModelRequiredMessageKey == "agent.workspace.chatModelRequired.message")
@@ -1635,21 +1635,21 @@ struct AppSettingsTests {
             hasConfiguredChatModel: false,
             workspace: .knowledgeRAG
         ) {
-        case .requiresPro(.knowledgeRAG):
+        case .requiresChatModel:
             break
         default:
-            Issue.record("免费用户应优先进入知识库 RAG 付费墙")
+            Issue.record("未配置对话模型时应展示配置引导")
         }
 
         switch AIWorkspaceEntryGate.access(
             isProUser: true,
-            hasConfiguredChatModel: false,
+            hasConfiguredChatModel: true,
             workspace: .agent
         ) {
-        case .requiresChatModel:
+        case .allowed:
             break
         default:
-            Issue.record("Pro 用户未配置对话模型时应展示配置引导")
+            Issue.record("已配置对话模型时应直接进入工作台")
         }
     }
 

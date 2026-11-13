@@ -31,8 +31,7 @@ enum AIWorkspaceKind: Sendable {
 
 /// 工作台入口的判定结果。
 ///
-/// Pro 权益优先于模型配置判断：免费用户应先看到与所点功能对应的付费墙，
-/// 而不是被尚未配置的本地 AI 设置分散注意力。
+/// 付费墙已取消。入口只检查对话模型是否已配置。
 enum AIWorkspaceEntryAccess {
     case allowed
     case requiresPro(ProFeature)
@@ -46,20 +45,18 @@ enum AIWorkspaceEntryAccess {
 /// 也不会先创建半初始化窗口再发现配置不完整。
 @MainActor
 enum AIWorkspaceEntryGate {
-    /// 根据 Pro 权益和设置页「对话」任务的有效模型选择计算入口权限。
+    /// 根据设置页「对话」任务的有效模型选择计算入口权限。
     ///
     /// 这里故意不读取 API Key：Provider 已验证且用户为对话任务选定有效模型，才是
     /// Settings 所表达的“可用对话配置”；本地 Provider 是否需要 Key 由其自身配置处理。
-    ///
-    /// 本地 AI 免费（dong4j 2026-09-12）：对话任务解析到 `.localAI` 时跳过 Pro 判定，
-    /// 直接进入模型配置检查；远程 provider 行为不变。
+    /// `isProUser` / `usesLocalChatModel` 保留在签名里，避免各入口再改调用，但不再拦截。
     static func access(
         isProUser: Bool,
         usesLocalChatModel: Bool = false,
         hasConfiguredChatModel: Bool,
         workspace: AIWorkspaceKind
     ) -> AIWorkspaceEntryAccess {
-        guard isProUser || usesLocalChatModel else { return .requiresPro(workspace.proFeature) }
+        _ = (isProUser, usesLocalChatModel, workspace)
         guard hasConfiguredChatModel else { return .requiresChatModel }
         return .allowed
     }

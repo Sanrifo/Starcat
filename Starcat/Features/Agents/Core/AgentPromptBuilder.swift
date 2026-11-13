@@ -75,7 +75,7 @@ struct AgentExternalSearchPolicy: Codable, Hashable, Sendable {
             isEnabled: settings.externalContextEnabled,
             provider: settings.externalContextProviderSelection.rawValue,
             allowsPrivateRepositories: settings.externalSearchAllowPrivateRepos,
-            aggregatesProviders: settings.aggregateExternalContextSearchEnabled && settings.isProUser
+            aggregatesProviders: settings.aggregateExternalContextSearchEnabled
         )
     }
 }

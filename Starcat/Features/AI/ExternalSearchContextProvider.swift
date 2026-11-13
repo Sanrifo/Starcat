@@ -44,7 +44,7 @@ final class ExternalSearchContextProvider {
         let fingerprint = Self.queryFingerprint(queries)
         let registry = makeRegistry()
 
-        if settings.aggregateExternalContextSearchEnabled, settings.isProUser {
+        if settings.aggregateExternalContextSearchEnabled {
             return try await collectAggregate(repo: repo, queries: queries, fingerprint: fingerprint, registry: registry)
         }
 
@@ -70,7 +70,7 @@ final class ExternalSearchContextProvider {
 
         let fingerprint = Self.queryFingerprint(for: request)
         let registry = makeRegistry()
-        if settings.aggregateExternalContextSearchEnabled, settings.isProUser {
+        if settings.aggregateExternalContextSearchEnabled {
             return try await collectAggregate(
                 request: request,
                 fingerprint: fingerprint,

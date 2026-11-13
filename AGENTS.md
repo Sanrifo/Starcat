@@ -121,8 +121,8 @@ make run-direct
 ```
 
 - 上述入口固定使用 `/Applications/Xcode.app`；如稳定版 Xcode 安装在其他位置，显式设置 `STARCAT_STABLE_XCODE_DEVELOPER_DIR`。
-- `build/DerivedData-Sandbox` 只属于 App Store Debug，`build/DerivedData-NoSandbox` 只属于 Direct Debug，`build/DerivedData-Tests` 只属于命令行单测。脚本会记录 Xcode / SDK / scheme 所有权指纹，环境变化时仅重建对应的可再生缓存。
-- **禁止**裸 `xcodebuild build` 写入这三个固定目录，也禁止把其他 scheme、Xcode Beta 或一次性诊断构建指向它们。
+- `build/DerivedData-Sandbox` 只属于 App Store Debug，`build/DerivedData-NoSandbox` 只属于 Direct Debug，`build/DerivedData-Self` 只属于本机自用 ad-hoc Debug，`build/DerivedData-Tests` 只属于命令行单测。脚本会记录 Xcode / SDK / scheme 所有权指纹，环境变化时仅重建对应的可再生缓存。
+- **禁止**裸 `xcodebuild build` 写入这四个固定目录，也禁止把其他 scheme、Xcode Beta 或一次性诊断构建指向它们。
 - 需要新增构建场景时，先补 Makefile / 脚本标准入口；一次性裸 `xcodebuild` 必须使用独立的 `/tmp` DerivedData，不能借用项目固定缓存。
 
 ---
