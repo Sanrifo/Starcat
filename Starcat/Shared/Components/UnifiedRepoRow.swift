@@ -162,6 +162,25 @@ struct UnifiedRepoRow: View {
         dependencies.starredRegistry.displayedStarsCount(base: card.starsCount, ghRepoId: card.ghRepoId)
     }
 
+    /// 默认模式优先显示译文。没有译文、或用户选了优先原文时，回到 GitHub 原文。
+    private var displayedDescription: String? {
+        guard let original = card.description,
+              !original.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+        if let translated = dependencies.repoDescriptionTranslationStore.translatedText(
+            repoId: card.ghRepoId,
+            original: original
+        ) {
+            return translated
+        }
+        return original
+    }
+
+    /// 悬停始终给出原文，方便在默认译文模式下核对。
+    private var descriptionHelp: String {
+        card.description ?? ""
+    }
+
     init(
         card: RepoCardViewData,
         isSelected: Bool = false,
@@ -250,13 +269,14 @@ struct UnifiedRepoRow: View {
                     }
                     .lineLimit(1)
 
-                    if let description = card.description, !description.isEmpty {
+                    if let description = displayedDescription {
                         Text(description)
                             .font(interfaceScale.font(.caption))
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                             .truncationMode(.tail)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .help(Text(verbatim: descriptionHelp))
                     }
 
                     // 保留单棵布局树，避免恢复 ViewThatFits 多变体测量带来的滚动开销。

@@ -1264,11 +1264,22 @@ struct SidebarView: View {
                 if id == "linuxDo" {
                     exploreSelectableRow(
                         selection: .linuxDo,
-                        count: dependencies.linuxDoStore.provenance?.payload.origins?.count ?? 0
+                        count: dependencies.linuxDoStore.provenance?.payload.origins?.count ?? 0,
+                        statusText: translationStatusText(for: .linuxDo)
                     ) {
                         // 社区来源使用单气泡，复用分类字号与字重，避免独立缩放造成笔画不一致。
                         exploreSidebarBusinessIcon(.linuxDo, color: .indigo)
-                    } title: { Text(verbatim: "Linux.do") }
+                    } title: {
+                        HStack(spacing: 4) {
+                            Text(verbatim: "Linux.do")
+                                .lineLimit(1)
+                            exploreTranslationButton(
+                                scope: .linuxDo,
+                                isCatalogEmpty: dependencies.linuxDoStore.repositories.isEmpty,
+                                suppliedCandidates: linuxDoTranslationCandidates
+                            )
+                        }
+                    }
                 } else if let mode = ExploreMode(rawValue: id) {
                     exploreModeRow(mode)
                 }
@@ -1276,16 +1287,36 @@ struct SidebarView: View {
         }
     }
 
+    /// Awesome 顶层行不提供一键全译。语言和话题行也不进这里。
+    private func translationScope(for mode: ExploreMode) -> ExploreDescriptionTranslationScope? {
+        switch mode {
+        case .discover: return .discover
+        case .popular: return .popular
+        case .newReleases: return .newReleases
+        case .trending: return .trending
+        case .weekly: return .weekly
+        case .awesome: return nil
+        }
+    }
+
     private func exploreModeRow(_ mode: ExploreMode) -> some View {
-        exploreSelectableRow(
+        let scope = translationScope(for: mode)
+        return exploreSelectableRow(
             selection: .mode(mode),
-            count: exploreModeCount(mode)
+            count: exploreModeCount(mode),
+            statusText: scope.flatMap { translationStatusText(for: $0) }
         ) {
             exploreSidebarBusinessIcon(mode.businessIcon, color: mode.sidebarIconColor)
         } title: {
             HStack(spacing: 4) {
                 Text(mode.titleKey)
                     .lineLimit(1)
+                if let scope {
+                    exploreTranslationButton(
+                        scope: scope,
+                        isCatalogEmpty: (exploreModeCount(mode) ?? 0) == 0
+                    )
+                }
                 if mode == .awesome {
                     Button {
                         guard authSession.state.isAuthenticated else {
@@ -1355,7 +1386,8 @@ struct SidebarView: View {
     private func awesomeSourceRow(_ source: AwesomeSource?) -> some View {
         exploreSelectableRow(
             selection: .awesomeSource(source?.id),
-            count: source?.totalEntryCount ?? dependencies.awesomeStore.allRepositoryCount
+            count: source?.totalEntryCount ?? dependencies.awesomeStore.allRepositoryCount,
+            statusText: source.flatMap { translationStatusText(for: .awesomeSource($0.id)) }
         ) {
             if let source {
                 AwesomeSourceLogo(source: source, size: 18)
@@ -1370,6 +1402,12 @@ struct SidebarView: View {
             HStack(spacing: 5) {
                 Text(source?.displayName ?? String.l10n("awesome.sidebar.all"))
                     .lineLimit(1)
+                if let source {
+                    exploreTranslationButton(
+                        scope: .awesomeSource(source.id),
+                        isCatalogEmpty: source.totalEntryCount == 0 || !source.isAvailable
+                    )
+                }
                 if source?.isAvailable == false || source.flatMap({ dependencies.awesomeStore.sourceRefreshErrors[$0.id] }) != nil {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(interfaceScale.font(.captionSmall))
@@ -2288,6 +2326,7 @@ struct SidebarView: View {
     private func exploreSelectableRow<Title: View, Icon: View>(
         selection: ExploreSidebarSelection,
         count: Int?,
+        statusText: String? = nil,
         @ViewBuilder icon: () -> Icon,
         @ViewBuilder title: () -> Title
     ) -> some View {
@@ -2298,7 +2337,13 @@ struct SidebarView: View {
 
                 Spacer(minLength: 4)
 
-                if let count {
+                if let statusText {
+                    Text(verbatim: statusText)
+                        .font(interfaceScale.font(.captionSmall))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                } else if let count {
                     Text(count.formatted())
                         .font(interfaceScale.font(.captionSmall))
                         .foregroundStyle(.secondary)
@@ -2310,6 +2355,74 @@ struct SidebarView: View {
             icon()
         }
         .tag(selection)
+    }
+
+    /// 翻译进行中，行尾计数换成已完成 / 需翻译。空闲时仍显示目录总数。
+    private func translationStatusText(for scope: ExploreDescriptionTranslationScope) -> String? {
+        guard let progress = dependencies.repoDescriptionTranslationStore.exploreProgress[scope] else {
+            return nil
+        }
+        let completed = progress.completed.formatted(.number.locale(locale))
+        let total = progress.total.formatted(.number.locale(locale))
+        return "\(completed)/\(total)"
+    }
+
+    private var linuxDoTranslationCandidates: [RepoDescriptionTranslationCandidate] {
+        dependencies.linuxDoStore.repositories.compactMap { repo in
+            guard let description = repo.description else { return nil }
+            return RepoDescriptionTranslationCandidate(repoId: repo.repoID, description: description)
+        }
+    }
+
+    @ViewBuilder
+    private func exploreTranslationButton(
+        scope: ExploreDescriptionTranslationScope,
+        isCatalogEmpty: Bool,
+        suppliedCandidates: [RepoDescriptionTranslationCandidate]? = nil
+    ) -> some View {
+        let phase = dependencies.repoDescriptionTranslationStore.exploreProgress[scope]?.phase
+        let help = exploreTranslationHelp(for: phase)
+        Button {
+            dependencies.repoDescriptionTranslationStore.toggleExplore(
+                scope,
+                suppliedCandidates: suppliedCandidates
+            )
+        } label: {
+            Image(systemName: exploreTranslationIcon(for: phase))
+                .font(interfaceScale.font(.captionSmall))
+                .foregroundStyle(.secondary)
+                .frame(width: 18, height: 18)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .disabled(phase == nil && isCatalogEmpty)
+        .help(Text(help))
+        .accessibilityLabel(Text(help))
+    }
+
+    private func exploreTranslationIcon(for phase: ExploreDescriptionTranslationPhase?) -> String {
+        switch phase {
+        case .running:
+            return "stop.fill"
+        case .paused, .failed:
+            return "play.fill"
+        case nil:
+            return "character.bubble"
+        }
+    }
+
+    private func exploreTranslationHelp(for phase: ExploreDescriptionTranslationPhase?) -> LocalizedStringKey {
+        switch phase {
+        case .running:
+            return "explore.descriptionTranslation.stop"
+        case .paused:
+            return "explore.descriptionTranslation.resume"
+        case .failed:
+            return "explore.descriptionTranslation.retry"
+        case nil:
+            return "explore.descriptionTranslation.start"
+        }
     }
 
     @ViewBuilder

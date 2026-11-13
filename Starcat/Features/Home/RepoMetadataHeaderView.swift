@@ -264,11 +264,26 @@ struct RepoMetadataHeaderView<TrailingActions: View>: View {
 
     @ViewBuilder
     private var descriptionSection: some View {
-        if let desc = repo.description, !desc.isEmpty {
+        if let desc = displayedDescription {
             Text(desc)
                 .font(interfaceScale.font(.body))
                 .textSelection(.enabled)
+                .help(Text(verbatim: repo.description ?? desc))
         }
+    }
+
+    /// 与列表行共用同一份译文缓存。详情顶部和中栏卡片不会各显示一种语言。
+    private var displayedDescription: String? {
+        guard let original = repo.description,
+              !original.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+        if let translated = dependencies.repoDescriptionTranslationStore.translatedText(
+            repoId: repo.id,
+            original: original
+        ) {
+            return translated
+        }
+        return original
     }
 
     private var statsSection: some View {

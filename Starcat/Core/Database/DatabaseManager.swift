@@ -470,6 +470,9 @@ final class DatabaseManager: DatabaseManaging, @unchecked Sendable {
                     total INTEGER NOT NULL DEFAULT 0
                 )
                 """)
+            // v25 仍在开发。已跑过旧正文的本机库不会重跑迁移，这里把探索译文表补上。
+            // 封版后新用户只靠 v25 建表，这段旁路再抽掉。
+            try db.execute(sql: ExploreDescriptionTranslationSchema.createTableSQL)
         }
     }
 

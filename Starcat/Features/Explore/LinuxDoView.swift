@@ -92,6 +92,7 @@ struct LinuxDoView: View {
                 displayName: { $0 == .recommended ? "linuxdo.catalog.recentPromotion" : $0.titleKey },
                 iconSource: { $0 == .recommended ? .business(.recentUpdate) : $0.iconSource }
             )
+            RepoDescriptionDisplayModeMenu(settings: settings)
 
             Spacer()
                 .layoutPriority(AdaptiveToolbarStatusText.spacerPriority)

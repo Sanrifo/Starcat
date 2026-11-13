@@ -115,13 +115,17 @@ struct ReadmeWebView: View {
     /// nil 时浮动工具栏不显示该按钮。
     var onExportMarkdown: (() -> Void)? = nil
 
-    /// 当前 README 所属仓库。有值且设置打开「应用内打开仓库文档」时，
-    /// 同仓 Markdown 点击走 `onOpenRepositoryMarkdown`，不再进浏览器。
+    /// 当前 README 所属仓库。有值且允许拦截时，同仓 Markdown 点击走
+    /// `onOpenRepositoryMarkdown`，不再进浏览器。
     var markdownLinkRepositoryOwner: String? = nil
     var markdownLinkRepositoryName: String? = nil
 
-    /// 打开同仓 Markdown 独立窗。nil 时即使开关打开也回退浏览器。
+    /// 打开同仓 Markdown。nil 时即使允许拦截也回退浏览器。
     var onOpenRepositoryMarkdown: ((RepositoryMarkdownLinkTarget) -> Void)? = nil
+
+    /// 详情框内切换时为 true，不看「在 App 内打开仓库 Markdown」设置。
+    /// 独立 README 窗口保持 false，仍由该设置决定是否拦截。
+    var opensRepositoryMarkdownInDetailPane: Bool = false
 
     /// 当前翻译渲染状态。默认隐藏，普通 README 调用方无需感知翻译能力。
     var translationRenderState: ReadmeTranslationRenderState = .hidden
@@ -162,6 +166,7 @@ struct ReadmeWebView: View {
             starHistoryRenderState: starHistoryRenderState,
             onApproachingBottom: onApproachingBottom,
             openRepositoryMarkdownInApp: settings.openRepositoryMarkdownInApp,
+            opensRepositoryMarkdownInDetailPane: opensRepositoryMarkdownInDetailPane,
             markdownLinkRepositoryOwner: markdownLinkRepositoryOwner,
             markdownLinkRepositoryName: markdownLinkRepositoryName,
             onOpenRepositoryMarkdown: onOpenRepositoryMarkdown
@@ -330,6 +335,7 @@ private struct ReadmeWebContentView: NSViewRepresentable {
     let starHistoryRenderState: ReadmeStarHistoryRenderState
     var onApproachingBottom: () -> Void
     var openRepositoryMarkdownInApp: Bool
+    var opensRepositoryMarkdownInDetailPane: Bool
     var markdownLinkRepositoryOwner: String?
     var markdownLinkRepositoryName: String?
     var onOpenRepositoryMarkdown: ((RepositoryMarkdownLinkTarget) -> Void)?
@@ -371,6 +377,7 @@ private struct ReadmeWebContentView: NSViewRepresentable {
         context.coordinator.onTranslationSourceChange = onTranslationSourceChange
         context.coordinator.onApproachingBottom = onApproachingBottom
         context.coordinator.openRepositoryMarkdownInApp = openRepositoryMarkdownInApp
+        context.coordinator.opensRepositoryMarkdownInDetailPane = opensRepositoryMarkdownInDetailPane
         context.coordinator.markdownLinkRepositoryOwner = markdownLinkRepositoryOwner
         context.coordinator.markdownLinkRepositoryName = markdownLinkRepositoryName
         context.coordinator.onOpenRepositoryMarkdown = onOpenRepositoryMarkdown
@@ -391,6 +398,7 @@ private struct ReadmeWebContentView: NSViewRepresentable {
         context.coordinator.onTranslationSourceChange = onTranslationSourceChange
         context.coordinator.onApproachingBottom = onApproachingBottom
         context.coordinator.openRepositoryMarkdownInApp = openRepositoryMarkdownInApp
+        context.coordinator.opensRepositoryMarkdownInDetailPane = opensRepositoryMarkdownInDetailPane
         context.coordinator.markdownLinkRepositoryOwner = markdownLinkRepositoryOwner
         context.coordinator.markdownLinkRepositoryName = markdownLinkRepositoryName
         context.coordinator.onOpenRepositoryMarkdown = onOpenRepositoryMarkdown
@@ -550,6 +558,7 @@ private struct ReadmeWebContentView: NSViewRepresentable {
         var onApproachingBottom: () -> Void = {}
         var onFindResult: (Bool?) -> Void = { _ in }
         var openRepositoryMarkdownInApp = false
+        var opensRepositoryMarkdownInDetailPane = false
         var markdownLinkRepositoryOwner: String?
         var markdownLinkRepositoryName: String?
         var onOpenRepositoryMarkdown: ((RepositoryMarkdownLinkTarget) -> Void)?
@@ -1762,6 +1771,11 @@ private struct ReadmeWebContentView: NSViewRepresentable {
             // 触发的主框架首次导航（url == baseURL，navigationType == .other）也被 cancel，
             // WebView 直接白屏。修复后改为「除 linkActivated 外有条件允许」。
             if navigationAction.navigationType == .linkActivated {
+                if let current = webView.url,
+                   RepositoryMarkdownLink.isSameDocumentFragment(url: url, current: current) {
+                    decisionHandler(.allow)
+                    return
+                }
                 if openRepositoryMarkdownIfNeeded(
                     url: url,
                     modifierFlags: navigationAction.modifierFlags
@@ -1816,7 +1830,7 @@ private struct ReadmeWebContentView: NSViewRepresentable {
             url: URL,
             modifierFlags: NSEvent.ModifierFlags
         ) -> Bool {
-            guard openRepositoryMarkdownInApp else { return false }
+            guard openRepositoryMarkdownInApp || opensRepositoryMarkdownInDetailPane else { return false }
             guard !modifierFlags.contains(.command) else { return false }
             guard let owner = markdownLinkRepositoryOwner,
                   let repo = markdownLinkRepositoryName,

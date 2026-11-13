@@ -49,6 +49,67 @@ struct AwesomeReadmeParserTests {
         #expect(result.githubLinks[0].sourceAnchorURL.absoluteString.hasSuffix("#tools"))
     }
 
+    @Test("details 里的引用块、summary 分类和表格行都能解析成仓库")
+    func parsesBlockquotesInsideDetailsAndTableRows() throws {
+        // Sanrifo/awesome-java 的真实结构：分类在 <summary>，项目在引用块，子类用 ####。
+        let markdown = """
+        # Awesome Java [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
+
+        ## Projects
+
+        <details id="api-compatibility">
+        <summary><strong>API Compatibility</strong> <kbd>3 projects</kbd></summary>
+
+        > **[japicmp](https://github.com/siom79/japicmp)** <kbd>★ 779</kbd> <kbd>Apache-2.0</kbd> 🟢<br>Compares two library JARs.
+
+        </details>
+
+        <details id="cli">
+        <summary><strong>CLI</strong> <kbd>2 projects</kbd></summary>
+
+        #### Argument Parsing <kbd>1 projects</kbd>
+
+        > **[picocli](https://github.com/remkop/picocli)**<br>Annotation-based CLI.
+
+        > **[Sentry](https://github.com/getsentry/sentry-java)**<br>Integration with [Sentry](https://github.com/getsentry/sentry) platform.
+
+        > **[JADE](https://jade.tilab.com)**<br>Agent framework.
+
+        </details>
+
+        | Project | Description |
+        | --- | --- |
+        | [DesignMD](https://github.com/acme/design) | Design resource |
+
+        > **[Hippo](https://github.com/opengoofy/hippo4j/blob/develop/README-EN.md)**<br>Dynamic pool.
+        """
+
+        let result = try AwesomeReadmeParser.parse(
+            markdown: markdown,
+            source: AwesomeRepositoryAddress(owner: "Sanrifo", repo: "awesome-java"),
+            defaultBranch: "master"
+        )
+
+        #expect(result.githubLinks.map(\.address.fullName) == [
+            "siom79/japicmp",
+            "remkop/picocli",
+            "getsentry/sentry-java",
+            "acme/design",
+            "opengoofy/hippo4j",
+        ])
+        #expect(result.githubLinks[0].sectionPath == ["Awesome Java", "Projects", "API Compatibility"])
+        #expect(result.githubLinks[0].description == "Compares two library JARs.")
+        #expect(result.githubLinks[0].sourceAnchorURL.absoluteString.hasSuffix("#api-compatibility"))
+        #expect(result.githubLinks[1].sectionPath == ["Awesome Java", "Projects", "CLI", "Argument Parsing"])
+        #expect(result.githubLinks[1].description == "Annotation-based CLI.")
+        #expect(result.githubLinks[1].sourceAnchorURL.absoluteString.hasSuffix("#argument-parsing"))
+        #expect(result.githubLinks[2].description == "Integration with Sentry platform.")
+        #expect(result.githubLinks[3].sectionPath == ["Awesome Java", "Projects"])
+        #expect(result.githubLinks[3].description == "Design resource")
+        #expect(result.githubLinks[4].description == "Dynamic pool.")
+        #expect(result.externalLinkCount == 1)
+    }
+
     @Test("自定义来源拒绝私有来源仓库")
     func customSourceRejectsPrivateRepository() async throws {
         let github = FakeAwesomeGitHub()

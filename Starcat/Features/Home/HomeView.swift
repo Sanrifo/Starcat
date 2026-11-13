@@ -677,6 +677,9 @@ struct HomeView: View {
         .task {
             await bootstrapHome()
         }
+        .task {
+            dependencies.repoDescriptionTranslationStore.scheduleRefresh()
+        }
         // 冷启动恢复登录时，缓存 profile 可能先让 HomeView 查询匿名库，随后才完成
         // `_anonymous` → 用户库切换。数据库 revision 是切库完成后的确定边沿；在这里
         // 失效 Repo Pin 快照并重载，避免匿名库的空结果屏蔽用户库中的持久化 Pin。
@@ -737,7 +740,16 @@ struct HomeView: View {
             if case .syncing = newState {
                 dependencies.externalStarInbox.handleSyncStarted()
             }
+            if case .completed = newState {
+                dependencies.repoDescriptionTranslationStore.scheduleRefresh()
+            }
             dependencies.autoTidyScheduler.notifySyncStateChanged(newState)
+        }
+        .onChange(of: settings.readmeTranslationLanguage) { _, _ in
+            dependencies.repoDescriptionTranslationStore.scheduleRefresh()
+        }
+        .onChange(of: locale.identifier) { _, _ in
+            dependencies.repoDescriptionTranslationStore.scheduleRefresh()
         }
         // HOM-126：用户在 Settings 切换「定时」/触发开关后，让 scheduler 重新装载
         // 定时器与监听。settings.autoTidySettings 是结构体，赋值替换即触发 .onChange。
@@ -1590,6 +1602,7 @@ struct HomeView: View {
     /// Pin 快照，让紧随其后的认证入口从新数据库读取。
     private func handleDatabaseScopeChange(_ revision: UInt64) async {
         guard revision > 0 else { return }
+        dependencies.repoDescriptionTranslationStore.scheduleRefresh()
         viewModel.invalidateRepoPinsForDatabaseChange()
         dependencies.awesomeStore.resetForAccountChange()
 

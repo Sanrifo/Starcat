@@ -231,6 +231,7 @@ struct WeeklyContentView: View {
                 iconSource: weeklySortIconSource
             )
             .controlSize(.regular)
+            RepoDescriptionDisplayModeMenu(settings: settings)
 
             Spacer()
 

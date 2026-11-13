@@ -228,6 +228,9 @@ final class AppDependencies {
     /// README AI 翻译服务（AI 调用 + 缓存协调）。
     let readmeTranslationService: ReadmeTranslationService
 
+    /// 仓库短描述的 Google 静默翻译。列表和详情顶部共用这一份内存缓存。
+    let repoDescriptionTranslationStore: RepoDescriptionTranslationStore
+
     /// HOM-54 引入：GitHub Trending 数据仓库。
     let trendingRepository: any TrendingRepositoryProtocol
     /// W7+ 引入：Trending README 持久化（与 manage 路径独立的 `trending_readmes` 表）。
@@ -1178,6 +1181,10 @@ final class AppDependencies {
             translationRepository: DiskReadmeTranslationCache.shared,
             settings: self.settings,
             entitlementGate: self.entitlementGate
+        )
+        self.repoDescriptionTranslationStore = RepoDescriptionTranslationStore(
+            database: db,
+            settings: self.settings
         )
 
         // W4 Batch A1：标签 / 关联 / 笔记+状态 Repository

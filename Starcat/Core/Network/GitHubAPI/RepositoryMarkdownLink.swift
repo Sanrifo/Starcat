@@ -74,6 +74,16 @@ enum RepositoryMarkdownLink {
         return parsed
     }
 
+    /// 页内锚点：路径和当前文档一致，只多了 fragment。这种点击留在 WebView 里。
+    static func isSameDocumentFragment(url: URL, current: URL) -> Bool {
+        guard let fragment = url.fragment, !fragment.isEmpty else { return false }
+        guard let urlHost = url.host?.lowercased(),
+              let currentHost = current.host?.lowercased(),
+              urlHost == currentHost
+        else { return false }
+        return normalizedPath(url) == normalizedPath(current)
+    }
+
     /// 不绑定当前仓，只解析 GitHub Markdown 文件 URL。供单测覆盖各种形态。
     static func parse(_ url: URL) -> RepositoryMarkdownLinkTarget? {
         guard let host = url.host?.lowercased() else { return nil }
@@ -89,6 +99,14 @@ enum RepositoryMarkdownLink {
     }
 
     // MARK: - Private
+
+    private static func normalizedPath(_ url: URL) -> String {
+        var path = url.path
+        while path.count > 1, path.hasSuffix("/") {
+            path.removeLast()
+        }
+        return path
+    }
 
     /// `/owner/repo/blob/{ref}/{path}` 或 `/owner/repo/raw/{ref}/{path}`。
     ///

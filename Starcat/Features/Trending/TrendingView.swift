@@ -344,6 +344,7 @@ struct TrendingView: View {
         ) {
             trendingPeriodMenu
             trendingSortMenu
+            RepoDescriptionDisplayModeMenu(settings: settings)
 
             Spacer()
                 .layoutPriority(AdaptiveToolbarStatusText.spacerPriority)

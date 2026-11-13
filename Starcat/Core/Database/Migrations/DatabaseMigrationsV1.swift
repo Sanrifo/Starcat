@@ -122,6 +122,81 @@ enum DatabaseMigrations {
         registerV22(into: &migrator)
         registerV23(into: &migrator)
         registerV24(into: &migrator)
+        registerV25(into: &migrator)
+    }
+
+    // MARK: - v25-repo-description-translations：仓库短描述译文（2026-11-13）
+
+    /// 仓库 `description` 仍只保存 GitHub 原文。星标译文单独成表，供列表展示和搜索召回。
+    /// 探索译文同在这次未发布迁移里建表，但不挂 `repos` 外键，也不进星标 FTS。
+    ///
+    /// 为什么不改 `repos_fts`：那张表用 `unicode61`，连续中文不会按词切开；仓库名里的
+    /// `Go` / `AI` 又不能改成 `trigram`。译文因此使用独立外部内容表，分词与笔记全文索引一致。
+    ///
+    /// 描述变更时只删除星标译文行。译文表的 AFTER DELETE 会同步摘掉 FTS 记录；
+    /// 在同一条触发器里再手写一次 FTS delete，会把索引删两次并报 database malformed。
+    private static func registerV25(into migrator: inout DatabaseMigrator) {
+        migrator.registerMigration("v25-repo-description-translations") { db in
+            guard try db.tableExists("repos") else { return }
+
+            try db.create(table: "repo_description_translations", ifNotExists: true) { table in
+                table.column("repo_id", .integer)
+                    .primaryKey()
+                    .references("repos", column: "id", onDelete: .cascade)
+                table.column("source_hash", .text).notNull()
+                table.column("target_language", .text).notNull()
+                table.column("translated_text", .text).notNull()
+                table.column("updated_at", .text).notNull()
+            }
+
+            try db.execute(sql: """
+                CREATE VIRTUAL TABLE IF NOT EXISTS repo_description_translations_fts USING fts5(
+                    translated_text,
+                    content='repo_description_translations',
+                    content_rowid='repo_id',
+                    tokenize = 'trigram'
+                )
+                """)
+
+            try db.execute(sql: """
+                CREATE TRIGGER IF NOT EXISTS repo_description_translations_ai
+                AFTER INSERT ON repo_description_translations BEGIN
+                    INSERT INTO repo_description_translations_fts(rowid, translated_text)
+                    VALUES (new.repo_id, new.translated_text);
+                END
+                """)
+            try db.execute(sql: """
+                CREATE TRIGGER IF NOT EXISTS repo_description_translations_ad
+                AFTER DELETE ON repo_description_translations BEGIN
+                    INSERT INTO repo_description_translations_fts(
+                        repo_description_translations_fts, rowid, translated_text
+                    )
+                    VALUES ('delete', old.repo_id, old.translated_text);
+                END
+                """)
+            try db.execute(sql: """
+                CREATE TRIGGER IF NOT EXISTS repo_description_translations_au
+                AFTER UPDATE ON repo_description_translations BEGIN
+                    INSERT INTO repo_description_translations_fts(
+                        repo_description_translations_fts, rowid, translated_text
+                    )
+                    VALUES ('delete', old.repo_id, old.translated_text);
+                    INSERT INTO repo_description_translations_fts(rowid, translated_text)
+                    VALUES (new.repo_id, new.translated_text);
+                END
+                """)
+            try db.execute(sql: """
+                CREATE TRIGGER IF NOT EXISTS repos_au_clear_description_translation
+                AFTER UPDATE OF description ON repos
+                WHEN OLD.description IS NOT NEW.description
+                BEGIN
+                    DELETE FROM repo_description_translations WHERE repo_id = NEW.id;
+                END
+                """)
+
+            // 已执行过本迁移旧正文的开发库不会重跑这里，启动期 repair 会再补一次。
+            try db.execute(sql: ExploreDescriptionTranslationSchema.createTableSQL)
+        }
     }
 
     // MARK: - v24-github-star-list-local-overrides：组织限制下的本地分组覆盖（2026-09-21）

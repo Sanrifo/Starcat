@@ -28,14 +28,14 @@ struct TranslationSettingsTab: View {
     @State private var promptMode: ReadmeTranslationMode = .segmented
     @State private var isPromptEditorPresented = false
 
-    var body: some View {
+        var body: some View {
         Form {
             introductionSection
             engineSection
-            if settings.readmeTranslationEngine == .system {
+            if showsSystemTranslationSection {
                 systemTranslationSection
             }
-            if settings.readmeTranslationEngine == .google {
+            if showsGoogleSection {
                 googleSection
             }
             if settings.readmeTranslationEngine == .ai {
@@ -139,9 +139,43 @@ struct TranslationSettingsTab: View {
                     }
                 }
             }
+            centeredRow {
+                Picker("settings.translation.description.engine", selection: Binding(
+                    get: { settings.repoDescriptionTranslationEngine },
+                    set: { settings.repoDescriptionTranslationEngine = $0 }
+                )) {
+                    ForEach(RepoDescriptionTranslationEngine.allCases) { engine in
+                        Text(LocalizedStringKey(engine.displayNameKey)).tag(engine)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("settings.translation.description.engine")
+                        .lineLimit(1)
+                    Text("settings.translation.description.engine.help")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .help(Text("settings.translation.description.engine.help"))
+                }
+            }
         } header: {
             SettingsSectionHeader("settings.translation.section.engine", systemImage: "character.bubble")
         }
+    }
+
+    /// 仓库描述或 README 任一使用系统翻译时，都要能看到语言包状态。
+    private var showsSystemTranslationSection: Bool {
+        settings.readmeTranslationEngine == .system
+            || settings.repoDescriptionTranslationEngine == .system
+    }
+
+    /// 仓库描述或 README 任一使用 Google 时，都要能配置 API Key。
+    private var showsGoogleSection: Bool {
+        settings.readmeTranslationEngine == .google
+            || settings.repoDescriptionTranslationEngine == .google
     }
 
     /// 只展示实际语言组合的就绪摘要；完整下载与管理继续交给原语言包窗口。

@@ -1385,6 +1385,17 @@ final class AppSettings {
         didSet { persist(key: Keys.readmeTranslationEngine, value: readmeTranslationEngine.rawValue) }
     }
 
+    /// 仓库列表和详情顶部短描述的展示模式。默认显示译文；搜索不受这个开关影响。
+    var repoDescriptionDisplayMode: RepoDescriptionDisplayMode {
+        didSet { persist(key: Keys.repoDescriptionDisplayMode, value: repoDescriptionDisplayMode.rawValue) }
+    }
+
+    /// 仓库短描述的翻译方式。默认系统翻译，避免公开 Google 接口在大批量时被限流。
+    /// README 和通知仍用 `readmeTranslationEngine`。
+    var repoDescriptionTranslationEngine: RepoDescriptionTranslationEngine {
+        didSet { persist(key: Keys.repoDescriptionTranslationEngine, value: repoDescriptionTranslationEngine.rawValue) }
+    }
+
     /// Undo Star 历史保留天数（2026-07-05）。-1 = 永久不删。
     var undoStarRetentionDays: Int {
         didSet { defaults.set(undoStarRetentionDays, forKey: Keys.undoStarRetentionDays) }
@@ -2234,6 +2245,14 @@ final class AppSettings {
         self.readmeTranslationEngine = translationEngineRaw
             .flatMap(ReadmeTranslationEngine.init(rawValue:))
             ?? .system
+        let descriptionDisplayRaw = defaults.string(forKey: Keys.repoDescriptionDisplayMode)
+        self.repoDescriptionDisplayMode = descriptionDisplayRaw
+            .flatMap(RepoDescriptionDisplayMode.init(rawValue:))
+            ?? .translated
+        let descriptionEngineRaw = defaults.string(forKey: Keys.repoDescriptionTranslationEngine)
+        self.repoDescriptionTranslationEngine = descriptionEngineRaw
+            .flatMap(RepoDescriptionTranslationEngine.init(rawValue:))
+            ?? .system
 
         let retentionDays = defaults.integer(forKey: Keys.undoStarRetentionDays)
         self.undoStarRetentionDays = retentionDays == 0 ? 7 : retentionDays  // 首次默认 7 天
@@ -2518,6 +2537,8 @@ final class AppSettings {
         readmeTranslationLanguage = .auto
         readmeTranslationMode = .segmented
         readmeTranslationEngine = .system
+        repoDescriptionDisplayMode = .translated
+        repoDescriptionTranslationEngine = .system
         disableAnimations = false
         hideDockIcon = false
         spotlightSearchEnabled = false
@@ -3145,6 +3166,8 @@ final class AppSettings {
         static let readmeTranslationLanguage = "settings.readme.translation.language"  // HOM-68
         static let readmeTranslationMode = "settings.readme.translation.mode.v1"
         static let readmeTranslationEngine = "settings.readme.translation.engine.v1"
+        static let repoDescriptionDisplayMode = "settings.repoDescription.displayMode.v1"
+        static let repoDescriptionTranslationEngine = "settings.repoDescription.translationEngine.v1"
         static let undoStarRetentionDays = "settings.undoStar.retentionDays"  // 2026-07-05
         static let isProUser = "settings.pro.isProUser"  // HOM-151
         static let disableAnimations = "settings.general.disableAnimations.v1"  // 2026-06-15
@@ -3259,6 +3282,8 @@ final class AppSettings {
             readmeTranslationLanguage,
             readmeTranslationMode,
             readmeTranslationEngine,
+            repoDescriptionDisplayMode,
+            repoDescriptionTranslationEngine,
             isProUser,
             disableAnimations,
             hideDockIcon,

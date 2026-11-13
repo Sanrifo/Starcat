@@ -530,6 +530,7 @@ struct GRDBRepoRepository {
     /// **索引列**：
     /// - `repos_fts`：`name / full_name / description / language / topics`
     /// - `notes_fts`：`repo_notes.content`（用户私有笔记）
+    /// - `repo_description_translations_fts`：描述译文。展示模式不参与这条查询。
     ///
     /// **合并策略**（Q2 方案 a "OR 合并"）：两表 UNION ALL 后按 `repo_id` 聚合取最佳 BM25，
     /// 同一 repo 多源命中只返回一条；用户感知"找到了"最重要，不在乎来源是 repo 字段还是笔记。
@@ -573,6 +574,10 @@ struct GRDBRepoRepository {
                     SELECT rowid, bm25(repos_fts) FROM repos_fts WHERE repos_fts MATCH ?
                     UNION ALL
                     SELECT rowid, bm25(notes_fts) FROM notes_fts WHERE notes_fts MATCH ?
+                    UNION ALL
+                    SELECT rowid, bm25(repo_description_translations_fts)
+                    FROM repo_description_translations_fts
+                    WHERE repo_description_translations_fts MATCH ?
                 )
                 SELECT r.* FROM repos r
                 JOIN (
@@ -582,7 +587,7 @@ struct GRDBRepoRepository {
                 ) m ON r.id = m.repo_id
                 \(starredPredicate)
                 ORDER BY m.best_score ASC, r.starred_at DESC, r.id DESC
-            """, arguments: [ftsQuery, ftsQuery])
+            """, arguments: [ftsQuery, ftsQuery, ftsQuery])
         }
     }
 

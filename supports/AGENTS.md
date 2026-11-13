@@ -2,6 +2,8 @@
 
 > 本目录包含 Starcat 的后端 Go 服务、官网、管理控制台、用户文档、CLI、插件、Homebrew tap 等独立配套项目。
 > 本文档给所有 AI 协作者(Claude / Cursor / Gemini CLI 等)阅读，重点记录 Go API 通用约定，并说明其它独立仓库的边界。
+>
+> **开源运行实例（2026-11-13）**：下文的 `starcat-api` 聚合网关只属于商业版。本工作区开源的 trending / weekly / wiki / recommend / discovery 跑在 `ten1027:/home/ubuntu/starcat` 的独立容器里，不经过聚合网关，也不要假设请求带 `X-SC-Svc` 或访问 `https://starcat-api.fly.dev`。以各 API 仓库 `AGENTS.md` 的「当前部署」和 [`../../AGENTS.md`](../../AGENTS.md) 为准。
 
 ---
 

@@ -304,6 +304,7 @@ private struct ExploreDiscoveryListView: View {
                     option == ExploreSortOption.options(for: mode).first(where: \.isModeSpecificSort)
                 }
             )
+            RepoDescriptionDisplayModeMenu(settings: settings)
 
             Spacer()
                 .layoutPriority(AdaptiveToolbarStatusText.spacerPriority)

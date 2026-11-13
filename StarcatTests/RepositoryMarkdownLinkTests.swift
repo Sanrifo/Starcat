@@ -75,6 +75,16 @@ struct RepositoryMarkdownLinkTests {
         #expect(RepositoryMarkdownLink.classify(mdx, owner: "alice", repo: "foo") == nil)
     }
 
+    @Test("只有 fragment 变化时留在当前文档")
+    func detectsSameDocumentFragment() throws {
+        let current = try #require(URL(string: "https://github.com/alice/foo/blob/HEAD/"))
+        let anchor = try #require(URL(string: "https://github.com/alice/foo/blob/HEAD/#intro"))
+        let otherFile = try #require(URL(string: "https://github.com/alice/foo/blob/HEAD/README_CN.md#intro"))
+        #expect(RepositoryMarkdownLink.isSameDocumentFragment(url: anchor, current: current))
+        #expect(RepositoryMarkdownLink.isSameDocumentFragment(url: otherFile, current: current) == false)
+        #expect(RepositoryMarkdownLink.isSameDocumentFragment(url: current, current: current) == false)
+    }
+
     @Test("相对链接经 blob/HEAD 基址解析后可分类")
     func classifiesRelativeLinkResolvedAgainstHeadBase() throws {
         let repositoryURL = try #require(URL(string: "https://github.com/alice/foo"))

@@ -1718,6 +1718,13 @@ struct RepoListView: View {
                     dividerBefore: { $0.isManageSpecificSort && $0 == RepoSortOption.manageOptions.first(where: \.isManageSpecificSort) }
                 )
 
+                RepoDescriptionDisplayModeMenu(
+                    selection: Binding(
+                        get: { settings.repoDescriptionDisplayMode },
+                        set: { settings.repoDescriptionDisplayMode = $0 }
+                    )
+                )
+
                 Spacer()
                     .layoutPriority(AdaptiveToolbarStatusText.spacerPriority)
 
@@ -2917,6 +2924,51 @@ struct RepoListView: View {
             openCodebaseMemory(for: request.repo)
         }
         dependencies.companionActionDispatcher.pendingRequest = nil
+    }
+}
+
+/// 仓库短描述的展示开关。放在排序菜单旁边，只影响卡片和详情顶部那一行。
+struct RepoDescriptionDisplayModeMenu: View {
+    @Binding var selection: RepoDescriptionDisplayMode
+
+    init(selection: Binding<RepoDescriptionDisplayMode>) {
+        _selection = selection
+    }
+
+    init(settings: AppSettings) {
+        self.init(selection: Binding(
+            get: { settings.repoDescriptionDisplayMode },
+            set: { settings.repoDescriptionDisplayMode = $0 }
+        ))
+    }
+
+    var body: some View {
+        Menu {
+            Picker("list.descriptionDisplay.menu", selection: $selection) {
+                ForEach(RepoDescriptionDisplayMode.allCases) { mode in
+                    Text(title(for: mode)).tag(mode)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "text.justify.leading")
+                    .foregroundStyle(.secondary)
+                Text(title(for: selection))
+                    .lineLimit(1)
+            }
+            .accessibilityLabel("list.descriptionDisplay.menu")
+            .accessibilityValue(title(for: selection))
+        }
+        .fixedSize()
+        .help("list.descriptionDisplay.menu")
+    }
+
+    private func title(for mode: RepoDescriptionDisplayMode) -> LocalizedStringKey {
+        switch mode {
+        case .translated: "list.descriptionDisplay.translated"
+        case .original: "list.descriptionDisplay.original"
+        }
     }
 }
 

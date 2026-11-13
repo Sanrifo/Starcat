@@ -108,6 +108,7 @@ struct AwesomeView: View {
                 displayName: { $0.titleKey },
                 iconSource: { $0.iconSource }
             )
+            RepoDescriptionDisplayModeMenu(settings: settings)
 
             // 与其它中栏一致：Spacer 让搜索 / 筛选靠左，同步 / 多选靠右。
             Spacer()

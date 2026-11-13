@@ -71,6 +71,8 @@ struct DatabaseMigrationsV1Tests {
             "data_contribution_preferences", "data_contribution_outbox",
             "github_star_list_ai_rules", "github_star_list_ai_auto_ignored_repos",
             "repo_github_star_list_overrides",
+            "repo_description_translations", "repo_description_translations_fts",
+            "explore_description_translations",
             "awesome_resource_entries", "ai_organization_drafts",
             "ai_organization_draft_items"
         ]

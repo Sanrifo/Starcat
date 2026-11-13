@@ -336,6 +336,10 @@ struct ReadmeStateView: View {
     /// Manage 仍由 `ManageDetailContent` 持有，避免同一份 README 产生两个加载器。
     @State private var readmeStarHistoryViewModel: ReadmeStarHistoryViewModel?
     @State private var readmeStarHistoryTask: Task<Void, Never>?
+    /// 同仓 Markdown 的详情内阅读栈。默认 README 不进栈。
+    @State private var markdownStack = RepositoryMarkdownDocumentStack()
+    @State private var isLoadingAlternateMarkdown = false
+    @State private var markdownLoadGeneration = 0
 
     /// 主窗口各详情页共用一份翻译 VM。星标有 HomeView.selectedRepoID 的 prepare，
     /// 探索 / 活动 / 周刊没有；这里按当前仓 bind，避免 A 的译文和光圈留在 B 上。
@@ -403,7 +407,7 @@ struct ReadmeStateView: View {
     }
 
     var body: some View {
-        let currentDocument = currentReadmeDocument
+        let currentDocument = displayedReadmeDocument
         let presentedDocument = currentDocument
             ?? (showsReadmePlaceholder ? retainedReadmeDocument : nil)
 
@@ -440,6 +444,11 @@ struct ReadmeStateView: View {
         }
         .onDisappear {
             cancelReadmeStarHistory()
+        }
+        .onChange(of: contentScope) { _, _ in
+            markdownLoadGeneration += 1
+            markdownStack.clear()
+            isLoadingAlternateMarkdown = false
         }
         .toast(
             message: $translationToast,
@@ -551,6 +560,18 @@ struct ReadmeStateView: View {
             cachedAt: cachedAt,
             identity: "\(refreshCommandIdentity)|\(readmeVM.activeDocumentID ?? "unidentified")",
             baseURL: baseURL
+        )
+    }
+
+    /// 栈顶是语言文件或其它同仓 Markdown；空栈时仍是默认 README。
+    private var displayedReadmeDocument: PresentedReadmeDocument? {
+        guard let current = currentReadmeDocument else { return nil }
+        guard let frame = markdownStack.top else { return current }
+        return PresentedReadmeDocument(
+            html: frame.html,
+            cachedAt: current.cachedAt,
+            identity: "markdown|\(frame.target.cacheKey)",
+            baseURL: frame.target.contentBaseURL
         )
     }
 
@@ -757,14 +778,85 @@ struct ReadmeStateView: View {
         )
     }
 
+    private var alternateMarkdownBar: some View {
+        HStack(spacing: 8) {
+            Button {
+                markdownStack.pop()
+            } label: {
+                Label("readme.alternate.back", systemImage: "chevron.backward")
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+            }
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .disabled(markdownStack.isEmpty)
+            if let path = markdownStack.currentPath {
+                Text(verbatim: path)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            if isLoadingAlternateMarkdown {
+                ProgressView()
+                    .controlSize(.small)
+                Text("readme.alternate.loading")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+    }
+
+    /// 同仓 Markdown 拉成功后压栈。失败不替换当前文档，改用浏览器打开。
+    private func openRepositoryMarkdownInPane(_ target: RepositoryMarkdownLinkTarget) {
+        guard let context = markdownWindowContext else {
+            NSWorkspace.shared.open(target.browserURL)
+            return
+        }
+        markdownLoadGeneration += 1
+        let generation = markdownLoadGeneration
+        let scope = contentScope
+        isLoadingAlternateMarkdown = true
+        Task {
+            do {
+                let html = try await context.readmeAPI.fetchRenderedRepositoryMarkdown(
+                    owner: target.owner,
+                    repo: target.repo,
+                    path: target.path,
+                    ref: target.ref
+                )
+                guard generation == markdownLoadGeneration, contentScope == scope else { return }
+                markdownStack.push(RepositoryMarkdownFrame(target: target, html: html))
+                isLoadingAlternateMarkdown = false
+            } catch {
+                guard generation == markdownLoadGeneration, contentScope == scope else { return }
+                isLoadingAlternateMarkdown = false
+                AppLog.ui.error(
+                    "Repository markdown pane failed: \(error.localizedDescription, privacy: .public)"
+                )
+                NSWorkspace.shared.open(target.browserURL)
+            }
+        }
+    }
+
     /// 已加载 README 始终占据同一个结构分支；切 repo 时只更新现有 WKWebView 的文档。
     private func loadedReadmeContent(_ document: PresentedReadmeDocument) -> some View {
-        VStack(spacing: 0) {
+        let showsAlternateMarkdown = !markdownStack.isEmpty
+        let footerDocument = showsAlternateMarkdown ? (currentReadmeDocument ?? document) : document
+        return VStack(spacing: 0) {
+            if showsAlternateMarkdown || isLoadingAlternateMarkdown {
+                alternateMarkdownBar
+            }
             // 两种翻译方式都不替换整份 HTML。WebView 始终持有原始 DOM：
             // 分段模式追加译文，全文模式只替换 Text node，切换时无需重建原生视图。
             let renderedHtml = document.html
             let documentBaseURL = document.baseURL
-            let windowTitle = readmeWindowTitle
+            let windowTitle = showsAlternateMarkdown
+                ? (markdownStack.currentPath ?? readmeWindowTitle)
+                : readmeWindowTitle
             let documentKey = document.identity
             let markdownContext = markdownWindowContext
             ReadmeWebView(
@@ -786,21 +878,18 @@ struct ReadmeStateView: View {
                 },
                 markdownLinkRepositoryOwner: markdownContext?.owner,
                 markdownLinkRepositoryName: markdownContext?.repo,
-                onOpenRepositoryMarkdown: markdownContext.map { context in
-                    { target in
-                        ReadmeWindowController.showRepositoryMarkdown(
-                            target: target,
-                            dependencies: dependencies,
-                            readmeAPI: context.readmeAPI
-                        )
-                    }
+                onOpenRepositoryMarkdown: markdownContext == nil ? nil : { target in
+                    openRepositoryMarkdownInPane(target)
                 },
-                translationRenderState: scopedTranslationRenderState,
+                opensRepositoryMarkdownInDetailPane: true,
+                translationRenderState: showsAlternateMarkdown ? .hidden : scopedTranslationRenderState,
                 onTranslationSourceChange: { snapshot in
+                    // 语言文件的 DOM 不能写进默认 README 的翻译输入。
+                    guard markdownStack.isEmpty else { return }
                     translationSourceDocumentKey = documentKey
                     translationSourceSnapshot = snapshot
                 },
-                starHistoryRenderState: effectiveStarHistoryRenderState,
+                starHistoryRenderState: showsAlternateMarkdown ? .empty : effectiveStarHistoryRenderState,
                 onApproachingBottom: effectiveOnApproachingBottom
             )
             // 与 ActivityReleaseDetailContent 对齐：body slot 必须吃满 Scaffold 剩余
@@ -821,16 +910,16 @@ struct ReadmeStateView: View {
             ))
             .overlay {
                 StarcatAIBloomHaloLayerView(
-                    isActive: isReadmeTranslating,
+                    isActive: isReadmeTranslating && markdownStack.isEmpty,
                     reduceMotion: reduceMotion
                 )
             }
             .padding(.horizontal, 10)
             .padding(.top, 8)
             cacheFooter(
-                cachedAt: document.cachedAt,
-                sourceHtml: document.html,
-                sourceSnapshot: translationSourceDocumentKey == documentKey
+                cachedAt: footerDocument.cachedAt,
+                sourceHtml: footerDocument.html,
+                sourceSnapshot: translationSourceDocumentKey == footerDocument.identity
                     ? translationSourceSnapshot
                     : .empty
             )
